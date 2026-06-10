@@ -369,7 +369,14 @@ def main():
 
     # Load input
     path = Path(args.input)
-    df   = pd.read_excel(path) if path.suffix.lower() in [".xlsx", ".xls"] else pd.read_csv(path)
+    if path.suffix.lower() in [".xlsx", ".xls"]:
+        df = pd.read_excel(path)
+    elif path.suffix.lower() == ".txt":
+        lines = path.read_text(encoding="utf-8").splitlines()
+        questions = [l.strip() for l in lines if l.strip()]
+        df = pd.DataFrame({"question_text": questions})
+    else:
+        df = pd.read_csv(path)
 
     if "question_text" not in df.columns:
         raise ValueError("Input file must have a 'question_text' column")
