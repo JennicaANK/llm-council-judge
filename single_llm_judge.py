@@ -24,6 +24,7 @@ SUMMARY_FILE = Path.home() / "single_llm_summary.csv"
 ANSWER_MODELS = {
     "Llama":   "llama3.1:latest",
     "Mistral": "mistral:latest",
+    "QWEN":    "qwen3:8b",
 }
 JUDGE_MODEL = "llama3.1:latest"
 
