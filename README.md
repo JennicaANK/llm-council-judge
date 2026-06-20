@@ -1,5 +1,5 @@
-# CS180 — LLM-as-Council for Timely Question Prediction
-**San Jose State University | Spring 2026 | Aye Nyein Kyaw**
+# LLM-as-Council for Timely Question Prediction
+**San Jose State University | Aye Nyein Kyaw**
 
 ## Project Summary
 This project builds a benchmark of timely prediction questions sourced from Polymarket and evaluates how well individual LLMs and an LLM-as-Council ensemble answer them. Answers are scored by an LLM-as-Judge workflow.
