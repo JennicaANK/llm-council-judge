@@ -22,14 +22,14 @@ RESULTS_FILE = Path.home() / "new_single_llm_results.csv"
 SUMMARY_FILE = Path.home() / "new_single_llm_summary.csv"
 
 ANSWER_MODELS = {
-    "Llama":   "llama3.1:latest",
+    "Llama":   "llama3.1:8b-instruct-q4_K_M",
     "Mistral": "mistral:latest",
     "QWEN":      "qwen3:8b",
     "Gemma2":    "gemma2:9b",
     "Phi3":      "phi3:medium",
     "DeepSeek":  "deepseek-r1:8b",
 }
-JUDGE_MODEL = "llama3.1:latest"
+JUDGE_MODEL = "llama3.1:8b-instruct-q4_K_M"
 
 START_INDEX = 0   # change if resuming partway through
 END_INDEX   = None

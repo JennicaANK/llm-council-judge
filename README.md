@@ -23,6 +23,9 @@ This project investigates whether a group of language models working together (L
 ├── comparison_summary.xlsx           # Accuracy vs ground truth (old dataset)
 ├── council_run2_summary.xlsx         # 2-model council summary (old dataset)
 ├── council_run3_summary.xlsx         # 3-model council summary (old dataset)
+├── fetch_outcomes_v2.py   
+├── compare_predictions_v2.py 
+├── rescore_predictions.py            # Corrected scoring (use this for accuracy)
 └── README.md
 ```
 
@@ -64,77 +67,78 @@ Judge model: Llama 3.1 8B in all experiments.
 
 ## Method
 
-**Single-model evaluation:**
-Each model answers every question independently. The judge scores the answer 1-5 on correctness, completeness, clarity, and usefulness.
+**Single-model evaluation:** Each model answers every question independently in 2–4 sentences. A Llama 3.1 8B judge scores each answer 1–5 on correctness, completeness, clarity, and usefulness.
 
 **LLM-as-Council:**
-1. All answer models answer the question independently
-2. A chairman model reads all answers and synthesizes one final council answer
-3. The judge scores the council answer 1-5
+1. All answer models answer the question independently, using a structured "Predicted answer / Reasoning" format
+2. A chairman model reads all answers and writes one final council answer
+3. A Llama 3.1 8B judge scores the council answer 1–5 on clarity, reasoning quality, relevance, and overall quality (explicitly not real-world correctness)
+
+**Ground truth:** Resolved outcomes are fetched from the Polymarket Gamma API. Accuracy is computed by `rescore_predictions.py` (see "Scoring correction" below).
 
 ---
 
-## Results — Old Dataset (1,492 questions)
+## Scoring correction (October 2026)
 
-### Single-model judge scores
+My original comparison scripts (`compare_predictions.py`, `compare_predictions_v2.py`) counted a prediction as correct if the true answer appeared anywhere inside it as a substring. Because "no" appears inside words like "not", "know" and "November", many non-answers were counted as correct whenever a market resolved No. This inflated every accuracy number I reported earlier (for example, 55% for the 2-model council).
 
-| Model | Mean | Stdev | N |
-|---|---|---|---|
-| Llama 3.1 8B | 3.77 | 1.41 | 1,492 |
-| Mistral 7B | 4.37 | 0.99 | 1,492 |
-| QWEN 3 8B | 4.57 | 0.69 | 1,492 |
-
-### 2-model council (Llama + Mistral)
-
-| Chairman | Mean | Stdev | N |
-|---|---|---|---|
-| Llama 3.1 8B | 4.86 | 0.43 | 1,491 |
-| Mistral 7B | 4.67 | 0.47 | 1,492 |
-
-### 3-model council (Llama + Mistral + QWEN)
-
-| Chairman | Mean | Stdev | N |
-|---|---|---|---|
-| QWEN 3 8B | 4.93 | 0.25 | 1,363 |
-| Llama 3.1 8B | 4.90 | 0.31 | 1,486 |
-| Mistral 7B | 4.59 | 0.50 | 1,486 |
-
-### Ground truth accuracy (947 verified binary questions)
-
-| Setup | Accuracy | Mean Judge Score |
-|---|---|---|
-| 2-model council, Llama chairman | 55.12% | 4.93 |
-| 3-model council, Llama chairman | 54.19% | 4.91 |
-| 2-model council, Mistral chairman | 53.96% | 4.73 |
-| 3-model council, Mistral chairman | 53.55% | 4.64 |
-| Single QWEN | 49.52% | 4.63 |
-| 3-model council, QWEN chairman | 46.86% | 4.94 |
-| Single Mistral | 35.90% | 4.70 |
-| Single Llama | 23.23% | 4.45 |
-
-### Key findings
-
-- The council significantly improved Llama accuracy (23% to 55%, +32 points)
-- Adding QWEN as a third model did not improve council accuracy — the 2-model council remained the best setup
-- QWEN scored higher alone (49.52%) than as a chairman (46.86%), despite having the highest judge score as chairman (4.94) — judge scores do not always correlate with factual correctness
-- Llama's large improvement is partly explained by refusal laundering: single Llama frequently refused financial and betting questions (scored 1 by judge), while in the council Mistral's answer was always available for synthesis
+`rescore_predictions.py` replaces that logic. It extracts one label per answer using whole-word matching, treats refusals and non-answers as wrong, and reports parse rate, 95% confidence intervals, trivial baselines, and paired McNemar tests. I spot-checked the extracted labels by hand: council labels were all correct in my sample (32/32), and about 10% of single-model labels were wrong.
 
 ---
 
-## Results — New Dataset (2,000 questions, in progress)
+## Results — Old Dataset (947 verified binary questions)
 
-### Single-model judge scores
+| Setup | Accuracy | 95% CI | Gave a clear answer | Accuracy when it answered |
+|---|---|---|---|---|
+| 3-model council, Llama chairman | 33.1% | 30.2–36.2 | 53.5% | 61.9% |
+| 2-model council, Llama chairman | 25.7% | 23.0–28.5 | 41.3% | 62.2% |
+| 3-model council, Mistral chairman | 21.4% | 18.9–24.2 | 33.7% | 63.5% |
+| 2-model council, Mistral chairman | 18.2% | 15.8–20.8 | 29.3% | 62.1% |
+| 3-model council, QWEN chairman (n=860) | 17.7% | 15.3–20.4 | 25.9% | 68.2% |
+| Single Mistral | 0.4% | 0.2–1.1 | 0.7% | — |
+| Single QWEN | 0.2% | 0.1–0.8 | 1.1% | — |
+| Single Llama | 0.1% | 0.0–0.6 | 0.2% | — |
+| **Baseline: always "No"/"Under"** | **61.9%** | 58.7–64.9 | 100% | 61.9% |
 
-| Model | Mean | Stdev | N |
-|---|---|---|---|
-| DeepSeek R1 8B | 3.711 | 1.642 | 2,000 |
-| Gemma 2 9B | 3.679 | 1.734 | 2,000 |
-| QWEN 3 8B | 3.610 | 1.664 | 2,000 |
-| Phi-3 Medium | 3.599 | 1.498 | 2,000 |
-| Llama 3.1 8B | 3.558 | 1.482 | 2,000 |
-| Mistral 7B | 3.463 | 1.674 | 2,000 |
+## Results — New Dataset (1,975 resolved questions)
 
-Council run and ground truth validation in progress.
+| Setup | Accuracy | Gave a clear answer | Accuracy when it answered | Mean judge score |
+|---|---|---|---|---|
+| Council, Llama chairman | 36.0% | 62.6% | 57.6% | 4.79 |
+| Council, Mistral chairman | 22.0% | 41.6% | 52.7% | 4.40 |
+| Single Phi-3 | 16.5% | 46.4% | 35.4% | 3.60 |
+| Council, QWEN chairman (n=1,926) | 11.6% | 23.8% | 48.7% | 4.79 |
+| Single DeepSeek R1 | 3.1% | 8.1% | 39.0% | 3.70 |
+| Single Llama | 2.1% | 4.8% | 43.6% | 3.56 |
+| Single Mistral | 1.5% | 4.8% | 31.6% | 3.46 |
+| Single Gemma 2 | 1.4% | 3.6% | 39.4% | 3.68 |
+| Single QWEN | 1.4% | 3.4% | 39.7% | 3.60 |
+| **Baseline: always "No"** (1,611 binary questions) | **67.0%** | 100% | 67.0% | — |
+
+Single-model and council judge scores use different rubrics, so they should not be compared with each other.
+
+## Key findings
+
+- **No setup beats a trivial baseline.** Always answering "No" scores 62% (old) and 67% (new). Even on the questions where the council committed to an answer, it was right only 58–62% of the time.
+- **The council's main effect is getting models to commit to an answer.** Single models rarely gave a clear Yes/No, because their prompt never asked for one. Council outputs were structured, so they committed far more often. Because the prompts differ, this is not a clean test of whether councils reason better.
+- **The Llama chairman is the strongest chairman** on both datasets (McNemar p < 0.001 vs. Mistral and QWEN), mainly because it abstains less often.
+- **Judge scores do not track accuracy.** In the new council run, QWEN and Llama chairmen received the same mean judge score (4.79) but reached 11.6% and 36.0% accuracy.
+- **Single models often invented past results**, for example stating that a team "was leading" in a match that had not happened yet.
+
+## Limitations
+
+- Single-model and council runs used different prompts, temperatures, and judge rubrics.
+- Questions were passed as plain text, so models never saw the allowed answer choices.
+- Llama 3.1 8B was both the judge and one of the answer and chairman models, which allows self-preference bias.
+- Some single-model answers open with "Yes," or "No," without making a real prediction; about 10% of extracted single-model labels were wrong in a manual spot check.
+- Council runs had timeouts on a shared server; 129 (old) and 908 (new) error rows were dropped.
+
+## Next steps
+
+- Rerun single models with the same structured prompt the council uses, so the comparison is controlled
+- Pass answer choices to all models
+- Use a judge model that is not also a contestant
+- Compare against the Polymarket market price as a stronger baseline
 
 ---
 
@@ -172,8 +176,8 @@ python3 ollama_council_batch_v2.py \
 
 ### 5. Fetch ground truth and compare
 ```bash
-python3 fetch_outcomes.py
-python3 compare_predictions.py
+python3 python3 fetch_outcomes_v2.py
+python3 rescore_predictions.py --dataset new
 ```
 
 ---
